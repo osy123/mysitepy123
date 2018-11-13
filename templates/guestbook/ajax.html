@@ -1,0 +1,111 @@
+{% extends '../base.html' %}
+
+{% block css_link %}
+<link href="/assets/css/guestbook.css" rel="stylesheet" type="text/css">
+<script type="text/javascript" src="/assets/js/jquery/jquery-1.9.0.js"></script>
+<script>
+var page = 0;
+var isEnd = false;
+var render = function(guestbook, mode){
+	var htmls ='<li><table>' +
+					'<tr><td></td><td>'+guestbook.name+
+					'</td><td>'+guestbook.reg_date+
+					'</td><td><a href="">삭제</a></td></tr>'+
+					'<tr><td colspan="4">'+ guestbook.content+'</td></tr>'+
+					'</table><br></li>';
+	if(mode == true){
+		$("#list").prepend(htmls)
+	}else {
+		$("#list").append(htmls);
+	}
+};
+var fetchList = function(){
+	if ( isEnd == true ) {
+		return;
+	}
+	++page;
+	$.ajax({
+		url: "/guestbook/api/list?p="+ page,
+		type: "get",
+		dataType: "json",
+		data: "",
+		success: function(response){
+			console.log(response)
+			//rendering
+			$(response.result).each(function(index, guestbook){
+				render(guestbook, false);
+			});
+			//check isEnd
+			if ( response.result.length < 5) {
+				isEnd = true;
+				$("#btn-fetch").prop("disabled", true);
+			}
+		} ,
+		error: function(jqXHR, status, e){
+			console.error(status + ":" + e);
+		}
+	});
+	console.log("position1");
+<!--    먼저나오므고 비동기통신 기다리지않고 실행 동기는 정지해있는것 blockiong -->
+}
+<!--$("#btn-fetch").click(function(){fetchList())};-->
+$(function(){
+	$("#form-add").submit(function(event){
+		event.preventDefault();
+		var name = $('#input-name').val()
+		var password =$('#input-password').val()
+		var content = $('#tx-content').val()
+		$.ajax({
+			url: "/guestbook/api/add",
+			type: "post",
+			dataType: "json",
+			data: "name=" + name +
+			 		"&password=" + password +
+			 		 "&content="+ content +
+			 		 "&csrfmiddlewaretoken=" +$("input[name='csrfmiddlewaretoken']").val(),
+			success: function(response){
+				render(response.data, true)
+				//폼 지우기
+				$("#form-add")[0].reset()
+			} ,
+			error: function(jqXHR, status, e){
+			console.error(status + ":" + e)
+			}
+		});
+	});
+	$(window).scroll(function(){
+		var $window = $(this);
+		var scrollTop = $window.scrollTop();
+		var windowHeight = $window.height();
+		var documentHeight = $(document).height();
+		if( scrollTop + windowHeight +10 > documentHeight){
+			fetchList();
+		}
+	});
+	<!--첫번째 리스트 가져오기-->
+	fetchList();
+});
+</script>
+{% endblock %}
+{% block content %}
+			<div id="guestbook">
+				<form id="form-add" action="/guestbook/add" method="post">
+					{% csrf_token %}
+					<table>
+						<tr>
+							<td>이름</td><td><input type="text" name="name" id="input-name"></td>
+							<td>비밀번호</td><td><input type="password" name="pass" id="input-password"></td>
+						</tr>
+						<tr>
+							<td colspan=4><textarea name="content" id="tx-content"></textarea></td>
+						</tr>
+						<tr>
+							<td colspan=4 align=right><input type="submit" VALUE=" 확인 "></td>
+						</tr>
+					</table>
+				</form>
+				<!--<button id="btn-fetch">가져오기</button>-->
+				<ul id="list">
+				</ul>
+			</div>
+{% endblock %}
